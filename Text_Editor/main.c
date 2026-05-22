@@ -4,6 +4,24 @@
 #include <string.h>
 
 int main() {
+	FILE* file;
+	char mystring[100];
+
+	file = fopen("MyFile.txt", "r");
+	if (file == NULL) {
+		printf("Error opening file");
+	}
+	else
+	{
+		if (fgets(mystring, 100, file) != NULL) {
+			printf("%s", mystring);
+		}
+		fclose(file);
+	}
+	return;
+	0;
+
+
 	char command;
 	printf("Choose the command: ");
 	scanf_s(" %c", &command);

@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Text_Editor.vcxproj" Id="9e264920-fb01-4653-94c2-bef30e96c0db" />
+</Solution>
