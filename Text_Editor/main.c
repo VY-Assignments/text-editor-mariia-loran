@@ -10,11 +10,8 @@ struct DynamicBuffer {
 
 
 void Append(struct DynamicBuffer* buffer) {
-
 	char temp_input[100];
 	printf("Enter text to append: ");
-
-	
 	if (fgets(temp_input, sizeof(temp_input), stdin) == NULL) {
 		return;
 	}
@@ -44,14 +41,47 @@ void Append(struct DynamicBuffer* buffer) {
 	{
 		strcat_s(buffer->data, (size_t)new_length + 1, " ");
 	}
-	
 	strcat_s(buffer->data, (size_t)new_length + 1, temp_input);
 	buffer->length = new_length;
-
 }
 
+void StartTheNewLine(struct DynamicBuffer* buffer) {
+	
+}
 
+void LoadSaveFile(struct DynamicBuffer* buffer) {
 
+	//if (file == NULL) {
+	//	return;
+	//}
+}
+
+void PrintText(struct DynamicBuffer* buffer) {
+	if (buffer->data == NULL || buffer->length == 0) {
+		printf("Buffer is empty");
+		return;
+	}
+	printf("%s\n", buffer->data);
+}
+
+void InsertTextByLine(struct DynamicBuffer* buffer) {
+	if (buffer->data == NULL || buffer->length == 0) {
+		printf("Buffer is empty");
+		return;
+	}
+	
+}
+
+void Search(struct DynamicBuffer* buffer) {
+	if (buffer->data == NULL || buffer->length == 0) {
+		printf("Buffer is empty");
+		return;
+	}
+}
+
+void ClearConsole() {
+	system("cls");
+}
 
 int main() {
 	FILE* file  = NULL;
@@ -59,7 +89,7 @@ int main() {
 
 	fopen_s(&file, "MyFile.txt", "r");
 	if (file == NULL) {
-		printf("Error opening file");
+		printf("Error opening file \n");
 	}
 	else
 	{
@@ -69,13 +99,16 @@ int main() {
 		fclose(file);
 	}
 
-
 	struct DynamicBuffer my_buffer = { NULL, 0 };
 	char command;
-
 	while (1) {
+		printf("--------MENU--------\n");
+		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to load/save the information\n4.Print the current text to console\n");
+		printf("5.Insert the text by line and symbol index\n6.Search\n7.Clearing the console\nq/Q - Exit\n");
 		printf("Choose the command: ");
+
 		scanf_s(" %c", &command,1);
+		
 
 		int c;
 		while ((c = getchar()) != '\n' && c != EOF);
@@ -83,27 +116,33 @@ int main() {
 
 
 		if (command == '1') {
-			printf("You entered 1 - Append text symbols to the end  ");
+			printf("You entered 1 - Append text symbols to the end  \n");
 			Append(&my_buffer);
-			printf("%s\n", my_buffer.data);
+			//printf("%s\n", my_buffer.data);
 		}
 		else if (command == '2') {
-			printf("You entered 2 - Start the new line  ");
+			printf("You entered 2 - Start the new line \n");
+			StartTheNewLine(&my_buffer);
 		}
 		else if (command == '3') {
-			printf("You entered 3 - Use files to load/save the information");
+			printf("You entered 3 - Use files to load/save the information\n");
+			LoadSaveFile(&my_buffer);
 		}
 		else if (command == '4') {
-			printf("You entered 4 -  Print the current text to console ");
+			printf("You entered 4 -  Print the current text to console\n");
+			PrintText(&my_buffer);
 		}
 		else if (command == '5') {
-			printf("You entered 5 -  PInsert the text by line and symbol index ");
+			printf("You entered 5 -  Insert the text by line and symbol index\n");
+			InsertTextByLine(&my_buffer);
 		}
 		else if (command == '6') {
-			printf("You entered 6 -  Search (please note that the text can be found more than once)");
+			printf("You entered 6 -  Search (please note that the text can be found more than once)\n");
+			Search(&my_buffer);
 		}
 		else if (command == '7') {
-			printf("You entered 7 -  Clearing the console");
+			//printf("You entered 7 -  Clearing the console\n");
+			ClearConsole();
 		}
 		else if (command == 'q' || command == 'Q') {
 			printf("Exist");
@@ -120,24 +159,3 @@ int main() {
 	}
 	return 0;
 }
-//struct Node {
-//	uint64_t value;
-//	struct Node* next;
-//};
-//
-//struct linked_List
-//{
-//	struct Node* head;
-//};
-//
-//struct linked_List* create() {}
-//{
-//	struct linked_List* list = (struct(linked_List*)malloc(sizeof(struct(linked_List));
-//	{
-//		if (list != NULL) {
-//			list->head = NULL;
-//		}
-//		return list;
-//	};
-//};
-
