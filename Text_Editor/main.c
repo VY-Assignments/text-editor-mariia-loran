@@ -8,33 +8,47 @@ struct DynamicBuffer {
 	int64_t length;
 };
 
+
 void Append(struct DynamicBuffer* buffer) {
+
 	char temp_input[100];
 	printf("Enter text to append: ");
-	scanf_s("%99s",temp_input, (unsigned int)sizeof(temp_input));
 
 	
-	int64_t countlen = strlen(temp_input);
-	int64_t new_length = buffer->length + countlen;
+	if (fgets(temp_input, sizeof(temp_input), stdin) == NULL) {
+		return;
+	}
 
-	char* arr = realloc(buffer->data, (size_t)(new_length+1) * sizeof(char));
+	int64_t countlen = strlen(temp_input);
+	if (countlen > 0 && temp_input[countlen - 1] == '\n') {
+		temp_input[countlen - 1] = '\0';
+		countlen--;
+	}
+	if (countlen == 0) {
+		return;
+	}
+
+	int64_t addSpace = (buffer->length > 0) ? 1 : 0;
+	int64_t new_length = buffer->length + countlen + addSpace;
+
+	char* arr = realloc(buffer->data, (size_t)(new_length + 1) * sizeof(char));
 	if (arr == NULL) {
 		return;
 	}
+
+	buffer->data = arr;
 	if (buffer->length == 0) {
 		arr[0] = '\0';
 	}
+	else
+	{
+		strcat_s(buffer->data, (size_t)new_length + 1, " ");
+	}
 	
-
-	buffer->data = arr;
-	strcat_s(buffer->data,(size_t)new_length+1, temp_input);
+	strcat_s(buffer->data, (size_t)new_length + 1, temp_input);
 	buffer->length = new_length;
 
-	//strcpy(buffer->data+ buffer-> length,countlen+1, temp_input);
-
 }
-
-
 
 
 
@@ -62,6 +76,10 @@ int main() {
 	while (1) {
 		printf("Choose the command: ");
 		scanf_s(" %c", &command,1);
+
+		int c;
+		while ((c = getchar()) != '\n' && c != EOF);
+
 
 
 		if (command == '1') {
