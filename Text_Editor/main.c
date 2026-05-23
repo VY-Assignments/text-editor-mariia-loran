@@ -3,6 +3,31 @@
 #include <inttypes.h>
 #include <string.h>
 
+struct DynamicBuffer {
+	char* data;
+	int64_t length;
+};
+void Append(struct DynamicBuffer* buffer) {
+	char command;
+	printf("Enter text to append: ");
+	scanf_s(" %с", &command);
+
+	int64_t new_length = buffer->length + 1;
+
+	char* arr = realloc(buffer->data,new_length * sizeof(char));
+	if (arr == NULL) {
+		return;
+	}
+	buffer->data = arr;
+	buffer->data[buffer->length] = command;
+	buffer->length = new_length;
+}
+
+
+
+
+
+
 int main() {
 	FILE* file;
 	char mystring[100];
@@ -21,13 +46,14 @@ int main() {
 	return;
 	0;
 
-
+	struct DynamicBuffer my_buffer = { NULL, 0 };
 	char command;
 	printf("Choose the command: ");
 	scanf_s(" %c", &command);
 
 	if (command == '1') {
 		printf("You entered 1 - Append text symbols to the end  ");
+		Append(&my_buffer);
 	}
 	else if (command == '2') {
 		printf("You entered 2 - Start the new line  ");
@@ -54,3 +80,24 @@ int main() {
 	return 0;
 
 }
+struct Node {
+	uint64_t value;
+	struct Node* next;
+};
+
+struct linked_List
+{
+	struct Node* head;
+};
+
+struct linked_List* create() {}
+{
+	struct linked_List* list = (struct(linked_List*)malloc(sizeof(struct(linked_List));
+	{
+		if (list != NULL) {
+			list->head = NULL;
+		}
+		return list;
+	};
+};
+
