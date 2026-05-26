@@ -129,7 +129,6 @@ void Load(struct DynamicBuffer* buffer) {
 	}
 
 	if (file_size > 0) {
-		//int64_t new_length = (int64_t)file_size;
 		if (!ResizeBuffer(buffer, new_length)) {
 			fclose(file);
 			return;
@@ -141,8 +140,11 @@ void Load(struct DynamicBuffer* buffer) {
 		buffer->data[buffer->length] = '\0';
 	}
 	fclose(file);
-	printf("Text has been loaded successfuly \n", buffer->length);
+	printf("Text has been loaded successfuly(%lld bytes)\n", buffer->length);
 }
+
+
+
 
 void PrintText(struct DynamicBuffer* buffer) {
 	if (buffer->data == NULL || buffer->length == 0) {
@@ -152,11 +154,19 @@ void PrintText(struct DynamicBuffer* buffer) {
 	printf("%s\n", buffer->data);
 }
 
+
+
+
+
 void InsertTextByLine(struct DynamicBuffer* buffer) {
 	if (buffer->data == NULL || buffer->length == 0) {
 		printf("Buffer is empty");
 		return;
 	}
+
+	int target_line = 0;
+	int target_symbol = 0;
+	char text_to_insert[120];
 	
 }
 
@@ -165,7 +175,39 @@ void Search(struct DynamicBuffer* buffer) {
 		printf("Buffer is empty");
 		return;
 	}
+
+	char search_str[128];
+	printf("ENter text to search: ");
+	if (fgets(search_str, sizeof(search_str), stdin) == NULL) return;
+	TrimNewLine(search_str);
+
+	size_t search_len = strlen(search_str);
+	if (search_len == 0) return;
+
+	int line_index = 0;
+	int symbol_index = 0;
+	int found_any = 0;
+
+	for (int64_t i = 0; i < buffer->length; i++) {
+		if (strncmp(&buffer->data[i], search_str, search_len) == 0) {
+			printf("Text is present in this position: %d %d\n", line_index, symbol_index);
+			found_any = 1;
+		}
+
+		if (buffer->data[i] == '\n') {
+			line_index++;
+			symbol_index = 0;
+		}
+		else
+		{
+			symbol_index++;
+		}
+	}
+	if (!found_any) {
+		printf("Text not found \n ");
+	}
 }
+
 
 void ClearConsole() {
 	system("cls");
@@ -219,7 +261,7 @@ int main() {
 			printf("You entered 7 -  Search (please note that the text can be found more than once)\n");
 			Search(&my_buffer);
 		}
-		else if (command == '7') {
+		else if (command == '8') {
 			//printf("You entered 7 -  Clearing the console\n");
 			ClearConsole();
 		}
