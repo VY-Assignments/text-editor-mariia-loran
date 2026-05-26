@@ -46,7 +46,17 @@ void Append(struct DynamicBuffer* buffer) {
 }
 
 void StartTheNewLine(struct DynamicBuffer* buffer) {
-	
+	int64_t new_length = buffer->length + 1;
+	char* arr = realloc(buffer->data, (size_t)(new_length + 1) * sizeof(char));
+	if (arr == NULL) {
+		return;
+	}
+	buffer->data = arr;
+
+
+	buffer->data[buffer->length] = '\n';
+	buffer->data[new_length] = '\0';
+	buffer->length = new_length;
 }
 
 void LoadSaveFile(struct DynamicBuffer* buffer) {
