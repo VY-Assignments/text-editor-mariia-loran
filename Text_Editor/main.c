@@ -8,7 +8,24 @@ struct DynamicBuffer {
 	int64_t length;
 };
 
+void TrimNewLine(char* str) {
+	if (str == NULL) return;
+	int64_t countlen = (int64_t)strlen(str);
 
+	if (countlen > 0 && str[countlen - 1] == '\n') {
+		str[countlen - 1] = '\0';
+		//countlen--;
+	}
+}
+int ResizeBuffer(struct DynamicBuffer* buffer, int64_t new_size) {
+	char* arr = realloc(buffer->data, (size_t)(new_size + 1) * sizeof(char));
+	if (arr == NULL) {
+		printf("Memory allocation error\n");
+		return 0;
+	}
+	buffer->data = arr;
+	return 1;
+}
 void Append(struct DynamicBuffer* buffer) {
 	char temp_input[100];
 	printf("Enter text to append: ");
@@ -46,12 +63,9 @@ void Append(struct DynamicBuffer* buffer) {
 }
 
 void StartTheNewLine(struct DynamicBuffer* buffer) {
-	int64_t new_length = buffer->length + 1;
-	char* arr = realloc(buffer->data, (size_t)(new_length + 1) * sizeof(char));
-	if (arr == NULL) {
-		return;
-	}
-	buffer->data = arr;
+	int64_t countlen = 1;
+	int64_t new_length = buffer->length + countlen;
+	if (!ResizeBuffer(buffer, new_length)) return;
 
 
 	buffer->data[buffer->length] = '\n';
@@ -59,11 +73,75 @@ void StartTheNewLine(struct DynamicBuffer* buffer) {
 	buffer->length = new_length;
 }
 
-void LoadSaveFile(struct DynamicBuffer* buffer) {
+void Save(struct DynamicBuffer* buffer) {
+	char filename[100];
+	printf("Enter the file name for saving: ");
+	if (fgets(filename, sizeof(filename), stdin) == NULL) {
+		return;
+	}
 
-	//if (file == NULL) {
-	//	return;
-	//}
+	TrimNewLine(filename);
+	FILE* file = NULL;
+
+	fopen_s(&file, filename, "wb");
+	if (file == NULL) {
+		printf("Error opening file for writing!\n");
+		return;
+	}
+	if(buffer->data != NULL){
+		fputs(buffer->data, file);
+	}
+	fclose(file);
+	printf("Text has been saved successfully\n");
+
+}
+void Load(struct DynamicBuffer* buffer) {
+	char filename[100];
+	printf("Enter the file name for loading: ");
+	if (fgets(filename, sizeof(filename), stdin) == NULL) {
+		return;
+	}
+	TrimNewLine(filename);
+
+	FILE* file = NULL;
+	fopen_s(&file, filename, "r");
+	if (file == NULL) {
+		printf("Error opening file \n");
+		return;
+	}
+
+	fseek(file, 0, SEEK_END);
+
+	long file_size = ftell(file);
+	if (file_size < 0) {
+		printf("Error reading file size!\n");
+		fclose(file);
+		return;
+	}
+
+	rewind(file);
+	int64_t new_length = (int64_t)file_size;
+
+	if (buffer->data != NULL) {
+		free(buffer->data);
+		buffer->data = NULL;
+		buffer->length = 0;
+	}
+
+	if (file_size > 0) {
+		//int64_t new_length = (int64_t)file_size;
+		if (!ResizeBuffer(buffer, new_length)) {
+			fclose(file);
+			return;
+		}
+		size_t bytes_read = fread(buffer->data, sizeof(char), (size_t)file_size, file);
+		buffer->length = (int64_t)bytes_read;
+	}
+	if (buffer->data != NULL) {
+		buffer->data[buffer->length] = '\0';
+	}
+	fclose(file);
+	printf("Text has been loaded successfuly \n", buffer->length);
 }
 
 void PrintText(struct DynamicBuffer* buffer) {
@@ -94,27 +172,14 @@ void ClearConsole() {
 }
 
 int main() {
-	FILE* file  = NULL;
-	char mystring[100];
-
-	fopen_s(&file, "MyFile.txt", "r");
-	if (file == NULL) {
-		printf("Error opening file \n");
-	}
-	else
-	{
-		if (fgets(mystring, 100, file) != NULL) {
-			printf("%s", mystring);
-		}
-		fclose(file);
-	}
+	
 
 	struct DynamicBuffer my_buffer = { NULL, 0 };
 	char command;
 	while (1) {
 		printf("--------MENU--------\n");
-		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to load/save the information\n4.Print the current text to console\n");
-		printf("5.Insert the text by line and symbol index\n6.Search\n7.Clearing the console\nq/Q - Exit\n");
+		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to save the information\n5.Print the current text to console\n");
+		printf("6.Insert the text by line and symbol index\n7.Search\n8.Clearing the console\nq/Q - Exit\n");
 		printf("Choose the command: ");
 
 		scanf_s(" %c", &command,1);
@@ -135,19 +200,23 @@ int main() {
 			StartTheNewLine(&my_buffer);
 		}
 		else if (command == '3') {
-			printf("You entered 3 - Use files to load/save the information\n");
-			LoadSaveFile(&my_buffer);
+			printf("You entered 3 - Use files to save the information\n");
+			Save(&my_buffer);
 		}
 		else if (command == '4') {
-			printf("You entered 4 -  Print the current text to console\n");
-			PrintText(&my_buffer);
+			printf("You entered 4 - Use files to load the information\n");
+			Load(&my_buffer);
 		}
 		else if (command == '5') {
-			printf("You entered 5 -  Insert the text by line and symbol index\n");
-			InsertTextByLine(&my_buffer);
+			printf("You entered 5 -  Print the current text to console\n");
+			PrintText(&my_buffer);
 		}
 		else if (command == '6') {
-			printf("You entered 6 -  Search (please note that the text can be found more than once)\n");
+			printf("You entered 6 -  Insert the text by line and symbol index\n");
+			InsertTextByLine(&my_buffer);
+		}
+		else if (command == '7') {
+			printf("You entered 7 -  Search (please note that the text can be found more than once)\n");
 			Search(&my_buffer);
 		}
 		else if (command == '7') {
