@@ -14,7 +14,6 @@ void TrimNewLine(char* str) {
 
 	if (countlen > 0 && str[countlen - 1] == '\n') {
 		str[countlen - 1] = '\0';
-		//countlen--;
 	}
 }
 int ResizeBuffer(struct DynamicBuffer* buffer, int64_t new_size) {
@@ -45,14 +44,12 @@ void Append(struct DynamicBuffer* buffer) {
 	int64_t addSpace = (buffer->length > 0) ? 1 : 0;
 	int64_t new_length = buffer->length + countlen + addSpace;
 
-	char* arr = realloc(buffer->data, (size_t)(new_length + 1) * sizeof(char));
-	if (arr == NULL) {
+	if (!ResizeBuffer(buffer, new_length)) {
 		return;
 	}
-
-	buffer->data = arr;
+	
 	if (buffer->length == 0) {
-		arr[0] = '\0';
+		buffer->data[0] = '\0';
 	}
 	else
 	{
@@ -61,6 +58,8 @@ void Append(struct DynamicBuffer* buffer) {
 	strcat_s(buffer->data, (size_t)new_length + 1, temp_input);
 	buffer->length = new_length;
 }
+
+
 
 void StartTheNewLine(struct DynamicBuffer* buffer) {
 	int64_t countlen = 1;
@@ -73,6 +72,8 @@ void StartTheNewLine(struct DynamicBuffer* buffer) {
 	buffer->length = new_length;
 }
 
+
+
 void Save(struct DynamicBuffer* buffer) {
 	char filename[100];
 	printf("Enter the file name for saving: ");
@@ -83,7 +84,7 @@ void Save(struct DynamicBuffer* buffer) {
 	TrimNewLine(filename);
 	FILE* file = NULL;
 
-	fopen_s(&file, filename, "wb");
+	fopen_s(&file, filename, "w");
 	if (file == NULL) {
 		printf("Error opening file for writing!\n");
 		return;
@@ -168,14 +169,87 @@ void InsertTextByLine(struct DynamicBuffer* buffer) {
 	int target_symbol = 0;
 	char text_to_insert[120];
 	
+	printf("Choose line and index: ");
+	if (scanf_s("%d %d", &target_line, &target_symbol) != 2) {
+		printf("Bad format \n");
+		int ch;
+		while ((ch = getchar()) != '\n' && ch != EOF);
+		return;
+	}
+
+	int ch;
+	while ((ch = getchar()) != '\n' && ch != EOF);
+
+	printf("Enter text to insert: ");
+	if (fgets(text_to_insert, sizeof(text_to_insert), stdin) == NULL) {
+		return;
+	}
+
+	TrimNewLine(text_to_insert);
+
+
+	int64_t insert_pos = 0;
+	int current_line = 0;
+
+	while (current_line < target_line && insert_pos < buffer->length) {
+		if (buffer->data[insert_pos] == '\n') {
+			current_line++;
+		}
+		insert_pos++;
+	}
+
+	if (current_line < target_line) {
+		printf("Error: out of range insert index (Line not found)\n");
+		return;
+	}
+
+	int current_symbol = 0;
+	while (current_symbol < target_symbol && insert_pos < buffer->length) {
+		if (buffer->data[insert_pos] == '\n') {
+			break;
+		}
+		current_symbol++;
+		insert_pos++;
+	}
+
+	if (current_symbol < target_symbol) {
+		printf("Error");
+		return;
+	}
+
+	int64_t insert_len = (int64_t)strlen(text_to_insert);
+	if (insert_len == 0) {
+		printf("Nothing to insert\n");
+		return;
+	}
+	int64_t new_length = buffer->length + insert_len;
+
+	if (!ResizeBuffer(buffer, new_length)) {
+		return;
+	}
+
+	int64_t bytes_to_move = buffer->length - insert_pos;
+
+	if (bytes_to_move > 0) {
+		memmove(&buffer->data[insert_pos + insert_len], &buffer->data[insert_pos], (size_t)bytes_to_move);
+	}
+	memcpy(&buffer->data[insert_pos], text_to_insert, (size_t)insert_len);
+
+	buffer->length = new_length;
+	buffer->data[buffer->length] = '\0';
+
+	printf("Text has been inserted\n");
 }
+
+
+
+
 
 void Search(struct DynamicBuffer* buffer) {
 	if (buffer->data == NULL || buffer->length == 0) {
 		printf("Buffer is empty");
 		return;
 	}
-
 	char search_str[128];
 	printf("ENter text to search: ");
 	if (fgets(search_str, sizeof(search_str), stdin) == NULL) return;
@@ -221,7 +295,8 @@ int main() {
 	while (1) {
 		printf("--------MENU--------\n");
 		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to save the information\n5.Print the current text to console\n");
-		printf("6.Insert the text by line and symbol index\n7.Search\n8.Clearing the console\nq/Q - Exit\n");
+		printf("6.Insert the text by line and symbol index\n7.Search\n8.Clearing the console\nq/Q - Exit\n\n");
+	
 		printf("Choose the command: ");
 
 		scanf_s(" %c", &command,1);
