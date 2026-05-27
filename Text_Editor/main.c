@@ -48,15 +48,18 @@ void Append(struct DynamicBuffer* buffer) {
 		return;
 	}
 	
-	if (buffer->length == 0) {
-		buffer->data[0] = '\0';
+	int64_t current_pos = buffer->length;
+	if (buffer->length > 0) {
+		buffer->data[current_pos] = ' ';
+		memcpy(&buffer->data[current_pos + 1], temp_input, (size_t)countlen);
 	}
-	else
-	{
-		strcat_s(buffer->data, (size_t)new_length + 1, " ");
+	else {
+		memcpy(buffer->data, temp_input, (size_t)countlen);
 	}
-	strcat_s(buffer->data, (size_t)new_length + 1, temp_input);
+
 	buffer->length = new_length;
+	buffer->data[buffer->length] = '\0';
+
 }
 
 
@@ -141,7 +144,7 @@ void Load(struct DynamicBuffer* buffer) {
 		buffer->data[buffer->length] = '\0';
 	}
 	fclose(file);
-	printf("Text has been loaded successfuly(%lld bytes)\n", buffer->length);
+	printf("Text has been loaded successfully (%lld bytes)\n", buffer->length);
 }
 
 
@@ -199,21 +202,18 @@ void InsertTextByLine(struct DynamicBuffer* buffer) {
 	}
 
 	if (current_line < target_line) {
-		printf("Error: out of range insert index (Line not found)\n");
+		printf("Error:Line not found\n");
 		return;
 	}
 
 	int current_symbol = 0;
-	while (current_symbol < target_symbol && insert_pos < buffer->length) {
-		if (buffer->data[insert_pos] == '\n') {
-			break;
-		}
+	while (current_symbol < target_symbol && insert_pos < buffer->length && buffer->data[insert_pos] != '\n') {
 		current_symbol++;
 		insert_pos++;
 	}
 
 	if (current_symbol < target_symbol) {
-		printf("Error");
+		printf("Error: Symbol index exceeds line length\n");
 		return;
 	}
 
@@ -262,7 +262,7 @@ void Search(struct DynamicBuffer* buffer) {
 	int symbol_index = 0;
 	int found_any = 0;
 
-	for (int64_t i = 0; i < buffer->length; i++) {
+	for (int64_t i = 0; i <= buffer->length - search_len; i++) {
 		if (strncmp(&buffer->data[i], search_str, search_len) == 0) {
 			printf("Text is present in this position: %d %d\n", line_index, symbol_index);
 			found_any = 1;
@@ -294,7 +294,7 @@ int main() {
 	char command;
 	while (1) {
 		printf("--------MENU--------\n");
-		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to save the information\n5.Print the current text to console\n");
+		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to load the information\n5.Print the current text to console\n");
 		printf("6.Insert the text by line and symbol index\n7.Search\n8.Clearing the console\nq/Q - Exit\n\n");
 	
 		printf("Choose the command: ");
