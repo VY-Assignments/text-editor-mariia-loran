@@ -292,7 +292,8 @@ int main() {
 
 	struct DynamicBuffer my_buffer = { NULL, 0 };
 	char command;
-	while (1) {
+	int a = 1;
+	while (a) {
 		printf("--------MENU--------\n");
 		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to load the information\n5.Print the current text to console\n");
 		printf("6.Insert the text by line and symbol index\n7.Search\n8.Clearing the console\nq/Q - Exit\n\n");
@@ -302,50 +303,52 @@ int main() {
 		scanf_s(" %c", &command,1);
 		
 
-		int c;
+		char c;
 		while ((c = getchar()) != '\n' && c != EOF);
 
 
-
-		if (command == '1') {
+		switch (command) {
+		case '1':
 			printf("You entered 1 - Append text symbols to the end  \n");
 			Append(&my_buffer);
-			//printf("%s\n", my_buffer.data);
-		}
-		else if (command == '2') {
+			break;
+
+		case '2':
 			printf("You entered 2 - Start the new line \n");
 			StartTheNewLine(&my_buffer);
-		}
-		else if (command == '3') {
+			break;
+
+		case '3':
 			printf("You entered 3 - Use files to save the information\n");
 			Save(&my_buffer);
-		}
-		else if (command == '4') {
+			break;
+
+		case '4':
 			printf("You entered 4 - Use files to load the information\n");
 			Load(&my_buffer);
-		}
-		else if (command == '5') {
+			break;
+
+		case '5':
 			printf("You entered 5 -  Print the current text to console\n");
 			PrintText(&my_buffer);
-		}
-		else if (command == '6') {
+			break;
+		case '6':
 			printf("You entered 6 -  Insert the text by line and symbol index\n");
 			InsertTextByLine(&my_buffer);
-		}
-		else if (command == '7') {
+			break;
+		case '7':
 			printf("You entered 7 -  Search (please note that the text can be found more than once)\n");
 			Search(&my_buffer);
-		}
-		else if (command == '8') {
-			//printf("You entered 7 -  Clearing the console\n");
-			ClearConsole();
-		}
-		else if (command == 'q' || command == 'Q') {
-			printf("Exist");
 			break;
-		}
-		else
-		{
+		case '8':
+			ClearConsole();
+			break;
+		case 'q':
+		case 'Q':
+			a = 0;
+			break;
+
+		default:
 			printf("You did not enter right number\n");
 		}
 	}
