@@ -137,6 +137,13 @@ void Load(struct DynamicBuffer* buffer) {
 			fclose(file);
 			return;
 		}
+		if (buffer->data == NULL) {
+			printf("Error: problem with buffer");
+			fclose(file);
+			return;
+
+
+		}
 		size_t bytes_read = fread(buffer->data, sizeof(char), (size_t)file_size, file);
 		buffer->length = (int64_t)bytes_read;
 	}
@@ -162,85 +169,107 @@ void PrintText(struct DynamicBuffer* buffer) {
 
 
 
-void InsertTextByLine(struct DynamicBuffer* buffer) {
-	if (buffer->data == NULL || buffer->length == 0) {
-		printf("Buffer is empty");
-		return;
-	}
 
-	int target_line = 0;
-	int target_symbol = 0;
-	char text_to_insert[120];
-	
+
+
+
+
+
+void Cordinates(int* line, int* symbol, char* text , int64_t text_size) {
 	printf("Choose line and index: ");
-	if (scanf_s("%d %d", &target_line, &target_symbol) != 2) {
+	if (scanf_s("%d %d", line, symbol) != 2) {
 		printf("Bad format \n");
 		int ch;
 		while ((ch = getchar()) != '\n' && ch != EOF);
 		return;
 	}
-
 	int ch;
 	while ((ch = getchar()) != '\n' && ch != EOF);
-
 	printf("Enter text to insert: ");
-	if (fgets(text_to_insert, sizeof(text_to_insert), stdin) == NULL) {
+	if (fgets(text, (int)text_size, stdin) == NULL) {
 		return;
 	}
+	TrimNewLine(text);
+}
 
-	TrimNewLine(text_to_insert);
 
-
+int64_t FindInserPosition(struct DynamicBuffer* buffer, int line, int symbol) {
 	int64_t insert_pos = 0;
 	int current_line = 0;
-
-	while (current_line < target_line && insert_pos < buffer->length) {
+	while (current_line < line && insert_pos < buffer->length) {
 		if (buffer->data[insert_pos] == '\n') {
 			current_line++;
 		}
 		insert_pos++;
 	}
-
-	if (current_line < target_line) {
+	if (current_line < line) {
 		printf("Error:Line not found\n");
-		return;
+		return -1;
 	}
-
 	int current_symbol = 0;
-	while (current_symbol < target_symbol && insert_pos < buffer->length && buffer->data[insert_pos] != '\n') {
+	while (current_symbol < symbol && insert_pos < buffer->length && buffer->data[insert_pos] != '\n') {
 		current_symbol++;
 		insert_pos++;
 	}
-
-	if (current_symbol < target_symbol) {
+	if (current_symbol < symbol) {
 		printf("Error: Symbol index exceeds line length\n");
-		return;
+		return -1;
 	}
+	return insert_pos;
+}
 
-	int64_t insert_len = (int64_t)strlen(text_to_insert);
+
+void InserText(struct DynamicBuffer* buffer, int64_t insert_pos, char* text) {
+
+	int64_t insert_len = (int64_t)strlen(text);
 	if (insert_len == 0) {
 		printf("Nothing to insert\n");
 		return;
 	}
+	int64_t old_length = buffer->length;
 	int64_t new_length = buffer->length + insert_len;
 
 	if (!ResizeBuffer(buffer, new_length)) {
 		return;
 	}
 
-	int64_t bytes_to_move = buffer->length - insert_pos;
+	int64_t bytes_to_move = old_length - insert_pos;
 
 	if (bytes_to_move > 0) {
 		memmove(&buffer->data[insert_pos + insert_len], &buffer->data[insert_pos], (size_t)bytes_to_move);
 	}
-	memcpy(&buffer->data[insert_pos], text_to_insert, (size_t)insert_len);
+	memcpy(&buffer->data[insert_pos], text, (size_t)insert_len);
 
 	buffer->length = new_length;
 	buffer->data[buffer->length] = '\0';
 
 	printf("Text has been inserted\n");
+
 }
 
+
+
+
+
+void InsertTextByLine(struct DynamicBuffer* buffer) {
+	if (buffer->data == NULL || buffer->length == 0) {
+		printf("Buffer is empty");
+		return;
+	}
+	int target_line = 0;
+	int target_symbol = 0;
+	char text_to_insert[120];
+
+	Cordinates(&target_line, &target_symbol, text_to_insert, sizeof(text_to_insert));
+
+	int64_t find_insert_position = FindInserPosition(buffer, target_line, target_symbol);
+	if (find_insert_position == -1) {
+		return;
+	}
+	InserText(buffer, find_insert_position, text_to_insert);
+
+}
+ 
 
 
 
@@ -255,7 +284,7 @@ void Search(struct DynamicBuffer* buffer) {
 	if (fgets(search_str, sizeof(search_str), stdin) == NULL) return;
 	TrimNewLine(search_str);
 
-	size_t search_len = strlen(search_str);
+	int64_t search_len = strlen(search_str);
 	if (search_len == 0) return;
 
 	int line_index = 0;
@@ -286,6 +315,26 @@ void Search(struct DynamicBuffer* buffer) {
 void ClearConsole() {
 	system("cls");
 }
+
+
+
+// HW2
+
+void DeleteTheCommand() {
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 int main() {
 	
