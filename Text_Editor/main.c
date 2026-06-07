@@ -41,7 +41,7 @@ void Append(struct DynamicBuffer* buffer) {
 		return;
 	}
 
-	int64_t addSpace = (buffer->length > 0) ? 1 : 0;
+	int64_t addSpace = (buffer->length > 0 && buffer->data[buffer->length -1] != '\n') ? 1 : 0;
 	int64_t new_length = buffer->length + countlen + addSpace;
 
 	if (!ResizeBuffer(buffer, new_length)) {
@@ -49,12 +49,12 @@ void Append(struct DynamicBuffer* buffer) {
 	}
 	
 	int64_t current_pos = buffer->length;
-	if (buffer->length > 0) {
+	if (addSpace) {
 		buffer->data[current_pos] = ' ';
 		memcpy(&buffer->data[current_pos + 1], temp_input, (size_t)countlen);
 	}
 	else {
-		memcpy(buffer->data, temp_input, (size_t)countlen);
+		memcpy(&buffer->data[current_pos], temp_input, (size_t)countlen);
 	}
 
 	buffer->length = new_length;
@@ -175,7 +175,7 @@ void PrintText(struct DynamicBuffer* buffer) {
 
 
 
-void Cordinates(int* line, int* symbol, char* text , int64_t text_size) {
+void Cordinates_for_insert(int* line, int* symbol, char* text , int64_t text_size) {
 	printf("Choose line and index: ");
 	if (scanf_s("%d %d", line, symbol) != 2) {
 		printf("Bad format \n");
@@ -191,7 +191,15 @@ void Cordinates(int* line, int* symbol, char* text , int64_t text_size) {
 	}
 	TrimNewLine(text);
 }
-
+void Cordinates_for_delete(int* line, int* symbol, int* number_of_symbols) {
+	printf("Choose line, index and number of symbols: ");
+	if (scanf_s("%d %d %d", line, symbol, number_of_symbols) != 3) {
+		printf("Bad format \n");
+		*number_of_symbols = 0;	
+	}
+	int ch;
+	while ((ch = getchar()) != '\n' && ch != EOF);
+} 
 
 int64_t FindInserPosition(struct DynamicBuffer* buffer, int line, int symbol) {
 	int64_t insert_pos = 0;
@@ -260,7 +268,7 @@ void InsertTextByLine(struct DynamicBuffer* buffer) {
 	int target_symbol = 0;
 	char text_to_insert[120];
 
-	Cordinates(&target_line, &target_symbol, text_to_insert, sizeof(text_to_insert));
+	Cordinates_for_insert(&target_line, &target_symbol, text_to_insert, sizeof(text_to_insert));
 
 	int64_t find_insert_position = FindInserPosition(buffer, target_line, target_symbol);
 	if (find_insert_position == -1) {
@@ -269,7 +277,7 @@ void InsertTextByLine(struct DynamicBuffer* buffer) {
 	InserText(buffer, find_insert_position, text_to_insert);
 
 }
- 
+
 
 
 
@@ -320,8 +328,43 @@ void ClearConsole() {
 
 // HW2
 
-void DeleteTheCommand() {
+void DeleteTheCommand(struct DynamicBuffer* buffer) {
+	if (buffer->data == NULL || buffer->length == 0) {
+		printf("Buffer is empty");
+		return;
+	}
+	int target_line = 0;
+	int target_symbol = 0;
+	int number_of_symbols = 0;
+	Cordinates_for_delete(&target_line, &target_symbol, &number_of_symbols);
+	if (number_of_symbols <= 0) {
+		printf("Nothing to delete\n");
+		return;
+	} 
+	int64_t delete_position = FindInserPosition(buffer, target_line, target_symbol);
+	if (delete_position == -1) {
+		return;
+	}
+	int64_t del_symbols = 0;
+	while (del_symbols < number_of_symbols && (delete_position + del_symbols) < buffer->length)
+	{
+		del_symbols++;
+	}
+	if (del_symbols == 0 ){
+		printf("No chaacters to delete");
+		return;
+	}
+	int64_t old_length = buffer->length;
+	int64_t bytes_to_move = old_length - (delete_position + del_symbols);
 
+	if (bytes_to_move > 0) {
+		memmove(&buffer->data[delete_position ], &buffer->data[delete_position + del_symbols], (size_t)bytes_to_move);
+	}
+	int64_t new_length = old_length- del_symbols;;
+	ResizeBuffer(buffer, new_length);
+	buffer->length = new_length;
+	buffer->data[buffer->length] = '\0';
+	printf("Text has been deleted\n");
 }
 
 
@@ -345,8 +388,8 @@ int main() {
 	while (a) {
 		printf("--------MENU--------\n");
 		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to load the information\n5.Print the current text to console\n");
-		printf("6.Insert the text by line and symbol index\n7.Search\n8.Clearing the console\nq/Q - Exit\n\n");
-	
+		printf("6.Insert the text by line and symbol index\n7.Search\n8.Clearing the console\n");
+		printf("9.Delete the command\n10.\n11.C\nq/Q - Exit\n\n");
 		printf("Choose the command: ");
 
 		scanf_s(" %c", &command,1);
@@ -391,6 +434,9 @@ int main() {
 			break;
 		case '8':
 			ClearConsole();
+			break;
+		case '9':
+			DeleteTheCommand(&my_buffer);
 			break;
 		case 'q':
 		case 'Q':
