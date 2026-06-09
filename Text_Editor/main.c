@@ -374,28 +374,52 @@ void DeleteTheCommand(struct DynamicBuffer* buffer, struct History* history) {
 
 
 
-void UndoCommand(struct DynamicBuffer* buffer, struct History* history)
+void UndoCommand(struct DynamicBuffer* buffer, struct History* history, struct History* redo_history)
 {
 	if (history->top == - 1) {
 		printf("Nothing to undo\n");
 		return; 
 	}
+	Push(redo_history, buffer->data);
+	free(buffer->data);
+	//if (buffer->data != NULL) {
+	//	free(buffer->data);		
+	//}
+	//buffer->length = history->h_length[history->top];
+	//buffer->data = history->h_addres[history->top];
+
+	//history->h_addres[history->top] = NULL;
+	//history->h_length[history->top] = 0;
+	char* prev_text = history->h_addres[history->top];
+	buffer->data = malloc(strlen(prev_text) +1);
 	if (buffer->data != NULL) {
-		free(buffer->data);
+	  strcpy_s(buffer->data,strlen(prev_text) +1,prev_text);
 	}
 	buffer->length = history->h_length[history->top];
-	buffer->data = history->h_addres[history->top];
-
-	history->h_addres[history->top] = NULL;
-	history->h_length[history->top] = 0;
-
+	free( history->h_addres[history->top]);
 	history->top--;
 	printf("Success\n");
 }
 
-void RedoCommand(struct DynamicBuffer* buffer) 
+void RedoCommand(struct DynamicBuffer* buffer, struct History* history, struct History* redo_history)
 {
-
+	if (redo_history->top == -1) {
+		printf("Nothing to undo\n");
+		return;
+	}
+	Push(history, buffer->data);
+	//if (buffer->data != NULL) {
+		free(buffer->data);
+	//}
+	char* next_text = redo_history->h_addres[redo_history->top];
+	buffer->data = malloc(strlen(next_text) + 1);
+	if (buffer->data != NULL) {
+		strcpy_s(buffer->data, strlen(next_text) + 1, next_text);
+	}
+	buffer->length = redo_history->h_length[redo_history->top];
+	free(redo_history->h_addres[redo_history->top]);
+	redo_history->top--;
+	printf("Redo Success\n");
 }
 
 
@@ -408,6 +432,7 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer) {}
 int main() {
 	
 	struct History history = { {NULL}, {0}, -1 };
+	struct History redo_history = { {NULL}, {0}, -1 };
 	struct DynamicBuffer my_buffer = { NULL, 0 };
 	char command;
 	int a = 1;
@@ -416,11 +441,11 @@ int main() {
 		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to load the information\n5.Print the current text to console\n");
 		printf("6.Insert the text by line and symbol index\n7.Search\n");
 
-		printf("8.Delete the Command\n9.Undo Command\n10.Redo Command\n11.Cut Command\n12.Copy Command\n13.Put Command\n");
-		printf("14.Insert with replacement Command\n15.Implement cursor-based logic\n'c' - Clearing the console\nq/Q - Exit\n\n");
+		printf("8.Delete the Command\n9.Undo Command\n10.Redo Command\n11.Cut Command\n13.Copy Command\n14.Put Command\n");
+		printf("15.Insert with replacement Command\n16.Implement cursor-based logic\n17.Clearing the console\n18.Exit\n\n");
 		printf("Choose the command: ");
 
-		scanf_s(" %c", &command,1);
+		scanf_s(" %d", &command,1);
 		
 
 		char c;
@@ -428,77 +453,76 @@ int main() {
 
 
 		switch (command) {
-		case '1':
+		case 1:
 			printf("You entered 1 - Append text symbols to the end  \n");
 			Append(&my_buffer, &history);
 			break;
-		case '2':
+		case 2:
 			printf("You entered 2 - Start the new line \n");
 			StartTheNewLine(&my_buffer, &history);
 			break;
-		case '3':
+		case 3:
 			printf("You entered 3 - Use files to save the information\n");
 			Save(&my_buffer);
 			break;
-		case '4':
+		case 4:
 			printf("You entered 4 - Use files to load the information\n");
 			Load(&my_buffer);
 			break;
-		case '5':
+		case 5:
 			printf("You entered 5 -  Print the current text to console\n");
 			PrintText(&my_buffer);
 			break;
-		case '6':
+		case 6:
 			printf("You entered 6 -  Insert the text by line and symbol index\n");
 			InsertTextByLine(&my_buffer, &history);
 			break;
-		case '7':
+		case 7:
 			printf("You entered 7 -  Search (please note that the text can be found more than once)\n");
 			Search(&my_buffer);
 			break;
 
 
 
-		case '8':
+		case 8:
 			printf("You entered 8 -  Delete Command\n");
 			DeleteTheCommand(&my_buffer, &history);
 			break;
-		case '9':
+		case 9:
 			printf("You entered 9 -  Undo Command\n");
-			UndoCommand(&my_buffer, &history);
+			UndoCommand(&my_buffer, &history, &redo_history);
 			break;
-		case '10':
+		case 10:
 			printf("You entered 10 -  Redo Command\n");
-			RedoCommand(&my_buffer);
+			RedoCommand(&my_buffer, &history, &redo_history);
 			break;
-		case '11':
+		case 11:
 			printf("You entered 11 -  Cut Command\n");
 			CutCommand(&my_buffer);
 			break;
-		case '12':
+		case 13:
 			printf("You entered 12 -  Copy Command\n");
 			CopyCommand(&my_buffer);
 			break;
-		case '13':
+		case 14:
 			printf("You entered 13 -  Put Command\n");
 			PutCommand(&my_buffer);
 			break;
-		case '14':
+		case 15:
 			printf("You entered 14 -  Insert with replacement Command\n");
 			Insert_with_replacement(&my_buffer);
 			break;
-		case '15':
+		case 16:
 			printf("You entered 15 -  Implement cursor-based logic\n");
 			Cursor_Based_Logic(&my_buffer);
 			break;
 
 
-		case 'c':
+		case 17:
 			printf("You entered c -  Clear Console\n");
 			ClearConsole();
 			break;
-		case 'q':
-		case 'Q':
+		case 18:
 			a = 0;
 			break;
 
