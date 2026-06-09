@@ -2,20 +2,50 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
-
+#define Max_Undo 15
 struct DynamicBuffer {
 	char* data;
 	int64_t length;
 };
+struct History
+{
+	char* h_addres[Max_Undo];
+	int64_t h_length[Max_Undo];
+	int top;
+};
 
+
+
+void Push(struct History* h, char* value)
+{
+	char* text_save = (value == NULL) ? "" : value;
+	if (h->top < Max_Undo - 1) {
+		h->top++;
+	}
+	else {
+		return;
+	}
+	size_t len = strlen(text_save);
+	char* alloc_text = malloc(len + 1);
+	if (alloc_text != NULL) {
+
+		h->h_addres[h->top] = alloc_text;
+		h->h_length[h->top] = (int64_t)len;
+		strcpy_s(h->h_addres[h->top], len + 1, text_save);
+	}
+	else {
+		h->top--;
+	}
+
+}
 void TrimNewLine(char* str) {
 	if (str == NULL) return;
 	int64_t countlen = (int64_t)strlen(str);
-
 	if (countlen > 0 && str[countlen - 1] == '\n') {
 		str[countlen - 1] = '\0';
 	}
 }
+
 int ResizeBuffer(struct DynamicBuffer* buffer, int64_t new_size) {
 	char* arr = realloc(buffer->data, (size_t)(new_size + 1) * sizeof(char));
 	if (arr == NULL) {
@@ -25,13 +55,13 @@ int ResizeBuffer(struct DynamicBuffer* buffer, int64_t new_size) {
 	buffer->data = arr;
 	return 1;
 }
-void Append(struct DynamicBuffer* buffer) {
+void Append(struct DynamicBuffer* buffer, struct History* history) {
+	Push(history, buffer->data);
 	char temp_input[100];
 	printf("Enter text to append: ");
 	if (fgets(temp_input, sizeof(temp_input), stdin) == NULL) {
 		return;
 	}
-
 	int64_t countlen = strlen(temp_input);
 	if (countlen > 0 && temp_input[countlen - 1] == '\n') {
 		temp_input[countlen - 1] = '\0';
@@ -40,14 +70,11 @@ void Append(struct DynamicBuffer* buffer) {
 	if (countlen == 0) {
 		return;
 	}
-
 	int64_t addSpace = (buffer->length > 0 && buffer->data[buffer->length -1] != '\n') ? 1 : 0;
 	int64_t new_length = buffer->length + countlen + addSpace;
-
 	if (!ResizeBuffer(buffer, new_length)) {
 		return;
 	}
-	
 	int64_t current_pos = buffer->length;
 	if (addSpace) {
 		buffer->data[current_pos] = ' ';
@@ -56,20 +83,17 @@ void Append(struct DynamicBuffer* buffer) {
 	else {
 		memcpy(&buffer->data[current_pos], temp_input, (size_t)countlen);
 	}
-
 	buffer->length = new_length;
 	buffer->data[buffer->length] = '\0';
-
 }
 
 
 
-void StartTheNewLine(struct DynamicBuffer* buffer) {
+void StartTheNewLine(struct DynamicBuffer* buffer, struct History* history) {
+	Push(history, buffer->data);
 	int64_t countlen = 1;
 	int64_t new_length = buffer->length + countlen;
 	if (!ResizeBuffer(buffer, new_length)) return;
-
-
 	buffer->data[buffer->length] = '\n';
 	buffer->data[new_length] = '\0';
 	buffer->length = new_length;
@@ -83,10 +107,8 @@ void Save(struct DynamicBuffer* buffer) {
 	if (fgets(filename, sizeof(filename), stdin) == NULL) {
 		return;
 	}
-
 	TrimNewLine(filename);
 	FILE* file = NULL;
-
 	fopen_s(&file, filename, "w");
 	if (file == NULL) {
 		printf("Error opening file for writing!\n");
@@ -97,8 +119,9 @@ void Save(struct DynamicBuffer* buffer) {
 	}
 	fclose(file);
 	printf("Text has been saved successfully\n");
-
 }
+
+
 void Load(struct DynamicBuffer* buffer) {
 	char filename[100];
 	printf("Enter the file name for loading: ");
@@ -106,32 +129,26 @@ void Load(struct DynamicBuffer* buffer) {
 		return;
 	}
 	TrimNewLine(filename);
-
 	FILE* file = NULL;
 	fopen_s(&file, filename, "r");
 	if (file == NULL) {
 		printf("Error opening file \n");
 		return;
 	}
-
 	fseek(file, 0, SEEK_END);
-
 	long file_size = ftell(file);
 	if (file_size < 0) {
 		printf("Error reading file size!\n");
 		fclose(file);
 		return;
 	}
-
 	rewind(file);
 	int64_t new_length = (int64_t)file_size;
-
 	if (buffer->data != NULL) {
 		free(buffer->data);
 		buffer->data = NULL;
 		buffer->length = 0;
 	}
-
 	if (file_size > 0) {
 		if (!ResizeBuffer(buffer, new_length)) {
 			fclose(file);
@@ -141,8 +158,6 @@ void Load(struct DynamicBuffer* buffer) {
 			printf("Error: problem with buffer");
 			fclose(file);
 			return;
-
-
 		}
 		size_t bytes_read = fread(buffer->data, sizeof(char), (size_t)file_size, file);
 		buffer->length = (int64_t)bytes_read;
@@ -228,7 +243,6 @@ int64_t FindInserPosition(struct DynamicBuffer* buffer, int line, int symbol) {
 
 
 void InserText(struct DynamicBuffer* buffer, int64_t insert_pos, char* text) {
-
 	int64_t insert_len = (int64_t)strlen(text);
 	if (insert_len == 0) {
 		printf("Nothing to insert\n");
@@ -236,30 +250,24 @@ void InserText(struct DynamicBuffer* buffer, int64_t insert_pos, char* text) {
 	}
 	int64_t old_length = buffer->length;
 	int64_t new_length = buffer->length + insert_len;
-
 	if (!ResizeBuffer(buffer, new_length)) {
 		return;
 	}
-
 	int64_t bytes_to_move = old_length - insert_pos;
-
 	if (bytes_to_move > 0) {
 		memmove(&buffer->data[insert_pos + insert_len], &buffer->data[insert_pos], (size_t)bytes_to_move);
 	}
 	memcpy(&buffer->data[insert_pos], text, (size_t)insert_len);
-
 	buffer->length = new_length;
 	buffer->data[buffer->length] = '\0';
-
 	printf("Text has been inserted\n");
-
 }
 
 
 
 
 
-void InsertTextByLine(struct DynamicBuffer* buffer) {
+void InsertTextByLine(struct DynamicBuffer* buffer, struct History* history) {
 	if (buffer->data == NULL || buffer->length == 0) {
 		printf("Buffer is empty");
 		return;
@@ -267,15 +275,13 @@ void InsertTextByLine(struct DynamicBuffer* buffer) {
 	int target_line = 0;
 	int target_symbol = 0;
 	char text_to_insert[120];
-
 	Cordinates_for_insert(&target_line, &target_symbol, text_to_insert, sizeof(text_to_insert));
-
 	int64_t find_insert_position = FindInserPosition(buffer, target_line, target_symbol);
 	if (find_insert_position == -1) {
 		return;
 	}
+	Push(history, buffer->data);
 	InserText(buffer, find_insert_position, text_to_insert);
-
 }
 
 
@@ -291,20 +297,16 @@ void Search(struct DynamicBuffer* buffer) {
 	printf("ENter text to search: ");
 	if (fgets(search_str, sizeof(search_str), stdin) == NULL) return;
 	TrimNewLine(search_str);
-
 	int64_t search_len = strlen(search_str);
 	if (search_len == 0) return;
-
 	int line_index = 0;
 	int symbol_index = 0;
 	int found_any = 0;
-
 	for (int64_t i = 0; i <= buffer->length - search_len; i++) {
 		if (strncmp(&buffer->data[i], search_str, search_len) == 0) {
 			printf("Text is present in this position: %d %d\n", line_index, symbol_index);
 			found_any = 1;
 		}
-
 		if (buffer->data[i] == '\n') {
 			line_index++;
 			symbol_index = 0;
@@ -328,7 +330,7 @@ void ClearConsole() {
 
 // HW2
 
-void DeleteTheCommand(struct DynamicBuffer* buffer) {
+void DeleteTheCommand(struct DynamicBuffer* buffer, struct History* history) {
 	if (buffer->data == NULL || buffer->length == 0) {
 		printf("Buffer is empty");
 		return;
@@ -354,6 +356,7 @@ void DeleteTheCommand(struct DynamicBuffer* buffer) {
 		printf("No chaacters to delete");
 		return;
 	}
+	Push(history, buffer->data);
 	int64_t old_length = buffer->length;
 	int64_t bytes_to_move = old_length - (delete_position + del_symbols);
 
@@ -371,25 +374,50 @@ void DeleteTheCommand(struct DynamicBuffer* buffer) {
 
 
 
+void UndoCommand(struct DynamicBuffer* buffer, struct History* history)
+{
+	if (history->top == - 1) {
+		printf("Nothing to undo\n");
+		return; 
+	}
+	if (buffer->data != NULL) {
+		free(buffer->data);
+	}
+	buffer->length = history->h_length[history->top];
+	buffer->data = history->h_addres[history->top];
+
+	history->h_addres[history->top] = NULL;
+	history->h_length[history->top] = 0;
+
+	history->top--;
+	printf("Success\n");
+}
+
+void RedoCommand(struct DynamicBuffer* buffer) 
+{
+
+}
 
 
-
-
-
-
-
+void CutCommand(struct DynamicBuffer* buffer) {}
+void CopyCommand(struct DynamicBuffer* buffer) {}
+void PutCommand(struct DynamicBuffer* buffer) {}
+void Insert_with_replacement(struct DynamicBuffer* buffer) {}
+void Cursor_Based_Logic(struct DynamicBuffer* buffer) {}
 
 int main() {
 	
-
+	struct History history = { {NULL}, {0}, -1 };
 	struct DynamicBuffer my_buffer = { NULL, 0 };
 	char command;
 	int a = 1;
 	while (a) {
 		printf("--------MENU--------\n");
 		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to load the information\n5.Print the current text to console\n");
-		printf("6.Insert the text by line and symbol index\n7.Search\n8.Clearing the console\n");
-		printf("9.Delete the command\n10.\n11.C\nq/Q - Exit\n\n");
+		printf("6.Insert the text by line and symbol index\n7.Search\n");
+
+		printf("8.Delete the Command\n9.Undo Command\n10.Redo Command\n11.Cut Command\n12.Copy Command\n13.Put Command\n");
+		printf("14.Insert with replacement Command\n15.Implement cursor-based logic\n'c' - Clearing the console\nq/Q - Exit\n\n");
 		printf("Choose the command: ");
 
 		scanf_s(" %c", &command,1);
@@ -402,41 +430,72 @@ int main() {
 		switch (command) {
 		case '1':
 			printf("You entered 1 - Append text symbols to the end  \n");
-			Append(&my_buffer);
+			Append(&my_buffer, &history);
 			break;
-
 		case '2':
 			printf("You entered 2 - Start the new line \n");
-			StartTheNewLine(&my_buffer);
+			StartTheNewLine(&my_buffer, &history);
 			break;
-
 		case '3':
 			printf("You entered 3 - Use files to save the information\n");
 			Save(&my_buffer);
 			break;
-
 		case '4':
 			printf("You entered 4 - Use files to load the information\n");
 			Load(&my_buffer);
 			break;
-
 		case '5':
 			printf("You entered 5 -  Print the current text to console\n");
 			PrintText(&my_buffer);
 			break;
 		case '6':
 			printf("You entered 6 -  Insert the text by line and symbol index\n");
-			InsertTextByLine(&my_buffer);
+			InsertTextByLine(&my_buffer, &history);
 			break;
 		case '7':
 			printf("You entered 7 -  Search (please note that the text can be found more than once)\n");
 			Search(&my_buffer);
 			break;
+
+
+
 		case '8':
-			ClearConsole();
+			printf("You entered 8 -  Delete Command\n");
+			DeleteTheCommand(&my_buffer, &history);
 			break;
 		case '9':
-			DeleteTheCommand(&my_buffer);
+			printf("You entered 9 -  Undo Command\n");
+			UndoCommand(&my_buffer, &history);
+			break;
+		case '10':
+			printf("You entered 10 -  Redo Command\n");
+			RedoCommand(&my_buffer);
+			break;
+		case '11':
+			printf("You entered 11 -  Cut Command\n");
+			CutCommand(&my_buffer);
+			break;
+		case '12':
+			printf("You entered 12 -  Copy Command\n");
+			CopyCommand(&my_buffer);
+			break;
+		case '13':
+			printf("You entered 13 -  Put Command\n");
+			PutCommand(&my_buffer);
+			break;
+		case '14':
+			printf("You entered 14 -  Insert with replacement Command\n");
+			Insert_with_replacement(&my_buffer);
+			break;
+		case '15':
+			printf("You entered 15 -  Implement cursor-based logic\n");
+			Cursor_Based_Logic(&my_buffer);
+			break;
+
+
+		case 'c':
+			printf("You entered c -  Clear Console\n");
+			ClearConsole();
 			break;
 		case 'q':
 		case 'Q':
