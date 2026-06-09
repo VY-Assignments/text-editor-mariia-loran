@@ -431,22 +431,20 @@ void CutCommand(struct DynamicBuffer* buffer , struct History* history,struct Cl
 	int number_of_symbols = 0;
 	Cordinates_for_delete(&target_line, &target_symbol, &number_of_symbols);
 	if (number_of_symbols <= 0) {
-		printf("Nothing to delete\n");
+		printf("Nothing to cut\n");
 		return;
 	}
 	int64_t cut_position = FindInserPosition(buffer, target_line, target_symbol);
 	if (cut_position == -1) return;
-
 	int64_t cut_symbols = 0;
 	while (cut_symbols < number_of_symbols && (cut_position + cut_symbols) < buffer->length)
 	{
 		cut_symbols++;
 	}
 	if (cut_symbols == 0) {
-		printf("No chaacters to delete");
+		printf("No chaacters to cut");
 		return;
 	}
-
 
 	if (clipboard->c_data != NULL) {
 		free(clipboard->c_data);
@@ -455,18 +453,16 @@ void CutCommand(struct DynamicBuffer* buffer , struct History* history,struct Cl
 	}
 	clipboard->c_data = malloc((size_t)cut_symbols + 1);
 	if (clipboard->c_data == NULL) {
-		printf("Nenory allocation error");
+		printf("Memory allocation error");
 		return;
 	}
 	memcpy(clipboard->c_data, &buffer->data[cut_position], (size_t)cut_symbols);
 	clipboard->c_length = cut_symbols;
 	clipboard->c_data[clipboard->c_length] = '\0';
 
-
 	Push(history, buffer->data);
 	int64_t old_length = buffer->length;
 	int64_t bytes_to_move = old_length - (cut_position + cut_symbols);
-
 	if (bytes_to_move > 0) {
 		memmove(&buffer->data[cut_position], &buffer->data[cut_position + cut_symbols], (size_t)bytes_to_move);
 	}
@@ -474,8 +470,7 @@ void CutCommand(struct DynamicBuffer* buffer , struct History* history,struct Cl
 	ResizeBuffer(buffer, new_length);
 	buffer->length = new_length;
 	buffer->data[buffer->length] = '\0';
-	printf("Text has been deleted\n");
-
+	printf("Text has been cutted\n");
 }
 
 
@@ -485,83 +480,67 @@ void CopyCommand(struct DynamicBuffer* buffer, struct History* history, struct C
 		printf("Buffer is empty");
 		return;
 	}
-	int target_line = 0;
-	int target_symbol = 0;
-	int number_of_symbols = 0;
+	int target_line = 0, target_symbol = 0, number_of_symbols = 0;
 	Cordinates_for_delete(&target_line, &target_symbol, &number_of_symbols);
 	if (number_of_symbols <= 0) {
-		printf("Nothing to delete\n");
+		printf("Nothing to copy\n");
 		return;
 	}
 	int64_t copy_position = FindInserPosition(buffer, target_line, target_symbol);
-	if (copy_position == -1) {
-		return;
-	}
+	if (copy_position == -1) return;
+	
 	int64_t copy_symbols = 0;
 	while (copy_symbols < number_of_symbols && (copy_position + copy_symbols) < buffer->length)
 	{
 		copy_symbols++;
 	}
 	if (copy_symbols == 0) {
-		printf("No chaacters to delete");
+		printf("No chaacters to copy");
 		return;
 	}
-	Push(clipboard, buffer->data);
-	int64_t old_length = buffer->length;
-	int64_t bytes_to_move = old_length - (copy_position + copy_symbols);
-
-	if (bytes_to_move > 0) {
-		memmove(&buffer->data[copy_position], &buffer->data[copy_position + copy_symbols], (size_t)bytes_to_move);
-	}
-	int64_t new_length = old_length - copy_symbols;;
-	ResizeBuffer(buffer, new_length);
-	buffer->length = new_length;
-	buffer->data[buffer->length] = '\0';
-	printf("Text has been deleted\n");
+	if (clipboard->c_data != NULL) free(clipboard->c_data);
+	clipboard->c_data = malloc((size_t)copy_symbols + 1);
+	if (clipboard->c_data == NULL) return;
+	
+	memcpy(clipboard->c_data, &buffer->data[copy_position], (size_t)copy_symbols);
+	clipboard->c_length = copy_symbols;
+	clipboard->c_data[clipboard->c_length] = '\0';
+	printf("Text has been copied\n");
 
 }
 
 
 void PutCommand(struct DynamicBuffer* buffer, struct History* history, struct Clipboard* clipboard)
 {
-
-	if (buffer->data == NULL || buffer->length == 0) {
-		printf("Buffer is empty");
+	if (clipboard->c_data == NULL || clipboard->c_length == 0) {
+		printf("Buffer is empty\n");
 		return;
 	}
-	int target_line = 0;
-	int target_symbol = 0;
-	int number_of_symbols = 0;
-	Cordinates_for_delete(&target_line, &target_symbol, &number_of_symbols);
-	if (number_of_symbols <= 0) {
-		printf("Nothing to delete\n");
+	int target_line = 0,target_symbol = 0;
+	printf("Choose line and index: ");
+	if (scanf_s("%d %d", &target_line, &target_symbol) != 2) {
+		printf("Bad format \n");
+		int ch;
+		while ((ch = getchar()) != '\n' && ch != EOF);
 		return;
 	}
-	int64_t delete_position = FindInserPosition(buffer, target_line, target_symbol);
-	if (delete_position == -1) {
-		return;
+	int ch;while ((ch = getchar()) != '\n' && ch != EOF);
+		
+	int64_t insert_position = 0;
+	if (buffer->length > 0) {
+		insert_position = FindInserPosition(buffer, target_line, target_symbol);
+		if (insert_position == -1) return;
 	}
-	int64_t del_symbols = 0;
-	while (del_symbols < number_of_symbols && (delete_position + del_symbols) < buffer->length)
-	{
-		del_symbols++;
+	else {
+		if (target_line != 0 || target_symbol != 0) {
+			printf("Error: Bufer is empty");
+			return;
+		}
 	}
-	if (del_symbols == 0) {
-		printf("No chaacters to delete");
-		return;
-	}
+	
 	Push(history, buffer->data);
-	int64_t old_length = buffer->length;
-	int64_t bytes_to_move = old_length - (delete_position + del_symbols);
-
-	if (bytes_to_move > 0) {
-		memmove(&buffer->data[delete_position], &buffer->data[delete_position + del_symbols], (size_t)bytes_to_move);
-	}
-	int64_t new_length = old_length - del_symbols;;
-	ResizeBuffer(buffer, new_length);
-	buffer->length = new_length;
-	buffer->data[buffer->length] = '\0';
-	printf("Text has been deleted\n");
+	InserText(buffer, insert_position, clipboard->c_data);
+	printf("Text has been putted\n");
 }
 
 
