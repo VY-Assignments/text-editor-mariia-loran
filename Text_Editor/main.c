@@ -27,7 +27,12 @@ void Push(struct History* h, char* value)
 		h->top++;
 	}
 	else {
-		return;
+		free(h->h_addres[0]);
+		for (int i = 1; i < Max_Undo; i++) {
+			h->h_addres[i - 1] = h->h_addres[i];
+			h->h_length[i - 1] = h->h_length[i];
+		}
+		h->top = Max_Undo - 1;
 	}
 	size_t len = strlen(text_save);
 	char* alloc_text = malloc(len + 1);
@@ -551,8 +556,51 @@ void PutCommand(struct DynamicBuffer* buffer, struct History* history, struct Cl
 
 
 
-void Insert_with_replacement(struct DynamicBuffer* buffer) 
+void Insert_with_replacement(struct DynamicBuffer* buffer, struct History* history)
 {
+	int target_line = 0, target_symbol = 0;
+	printf("Choose line and index: ");
+	if (scanf_s("%d %d", &target_line, &target_symbol) != 2) {
+		printf("Bad format \n");
+		int ch;
+		while ((ch = getchar()) != '\n' && ch != EOF);
+		return;
+	}
+	int ch;while ((ch = getchar()) != '\n' && ch != EOF);
+
+	char new_text[128];
+	printf("Write text : ");
+	if (fgets(new_text, sizeof(new_text), stdin) == NULL) {
+		return;
+	}
+	TrimNewLine(new_text);
+
+	int64_t input_len = (int64_t)strlen(new_text);
+	if (input_len == 0) return;
+
+	int64_t start_position = 0;
+	if (buffer->length > 0) {
+		start_position = FindInserPosition(buffer, target_line, target_symbol);
+		if (start_position == -1) return;
+	}
+	else {
+		if (target_line != 0 || target_symbol != 0) {
+			printf("Error: Bufer is empty");
+			return;
+		}
+	}
+
+	int64_t required_length = start_position + input_len;
+	int64_t current_old_lenght = buffer->length;
+	if (required_length > current_old_lenght) {
+		if (!ResizeBuffer(buffer, required_length)) {
+			return;
+		}
+		buffer->length = required_length;
+		buffer->data[buffer->length] = '\0';
+	}
+	memcpy(&buffer->data[start_position], new_text, (size_t)input_len);
+	printf("Text has been replaced \n");
 
 }
 void Cursor_Based_Logic(struct DynamicBuffer* buffer) {}
@@ -630,25 +678,25 @@ int main() {
 			CutCommand(&my_buffer, &history, &clipboard);
 			break;
 		case 13:
-			printf("You entered 12 -  Copy Command\n");
+			printf("You entered 13 -  Copy Command\n");
 			CopyCommand(&my_buffer , &history, &clipboard);
 			break;
 		case 14:
-			printf("You entered 13 -  Put Command\n");
+			printf("You entered 14 -  Put Command\n");
 			PutCommand(&my_buffer, &history, &clipboard);
 			break;
 		case 15:
-			printf("You entered 14 -  Insert with replacement Command\n");
-			Insert_with_replacement(&my_buffer);
+			printf("You entered 15 -  Insert with replacement Command\n");
+			Insert_with_replacement(&my_buffer, &history);
 			break;
 		case 16:
-			printf("You entered 15 -  Implement cursor-based logic\n");
+			printf("You entered 16 -  Implement cursor-based logic\n");
 			Cursor_Based_Logic(&my_buffer);
 			break;
 
 
 		case 17:
-			printf("You entered c -  Clear Console\n");
+			printf("You entered 17 -  Clear Console\n");
 			ClearConsole();
 			break;
 		case 18:
