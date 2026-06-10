@@ -379,7 +379,12 @@ void DeleteTheCommand(struct DynamicBuffer* buffer, struct History* history) {
 	printf("Text has been deleted\n");
 }
 
-
+void ClearRedoHistory(struct History* redo_history) {
+	while (redo_history->top >= 0) {
+		free(redo_history->h_addres[redo_history->top]);
+		redo_history->top--;
+	}
+}
 
 
 
@@ -602,30 +607,25 @@ void Insert_with_replacement(struct DynamicBuffer* buffer, struct History* histo
 
 }
 
-void ClearRedoHistory(struct History* redo_history) {
-	while (redo_history->top>=0) {
-		free(redo_history->h_addres[redo_history->top]);
-		redo_history->top--;
-	}
-}
 
-void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, struct History* redo_history)
+
+void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, struct History* redo_history, struct Clipboard* clipboard)
 {
 	static int cursor_line = 0;
 	static int cursor_symbol = 0;
 	printf("--------CURSOR MENU--------\n");
 	printf("1.Move curor\n8.Delete text from cursor\n");
 	printf("11.Cut text from cursor\n12.Past text from cursor\n");
-	printf("13.Copy text from cursor\n14.Insert with replacement at cursor");
+	printf("13.Copy text from cursor\n14.Insert with replacement at cursor\n");
 	printf("Choose the command: ");
 
 	char sub_input[10];
 	if (fgets(sub_input, sizeof(sub_input), stdin) == NULL) return;
 	TrimNewLine(sub_input);
-	int command;
-	if (sscanf_s(sub_input,"%d", &command) != 1) {
+	int action;
+	if (sscanf_s(sub_input, "%d", &action) != 1) {
 		printf("Invalid input");
-		command = -1;
+		action = -1;
 	}
 
 	int  t_line = 0, t_sym = 0;
@@ -636,7 +636,7 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 	int64_t bytes_to_move = 0;
 	int64_t actual_symbols = 0;
 	int64_t required_lenght = 0;
-	switch (command) {
+	switch (action) {
 	case 1:
 		printf("Enter new cursor position(line and symbols): \n");
 		if (scanf_s("%d %d", &t_line, &t_sym) != 2) {
@@ -655,7 +655,7 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 		}
 		cursor_line = t_line;
 		cursor_symbol = t_sym;
-		printf("Cursor successfully moved to %d %d\n", cursor_line,cursor_symbol);
+		printf("Cursor successfully moved to %d %d\n", cursor_line, cursor_symbol);
 		break;
 	case 8:
 		if (buffer->data == NULL || buffer->length == 0) {
@@ -663,7 +663,7 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 			return;
 		}
 		printf("Choose line and index: ");
-		if (scanf_s("%d",&num_of_symbols) != 1) {
+		if (scanf_s("%d", &num_of_symbols) != 1) {
 			printf("Bad format \n");
 			int ch; while ((ch = getchar()) != '\n' && ch != EOF);
 			return;
@@ -677,7 +677,7 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 
 		pos = FindInserPosition(buffer, cursor_line, cursor_symbol);
 		if (pos == -1)	return;
-		
+
 		actual_symbols = 0;
 		while (actual_symbols < num_of_symbols && (pos + actual_symbols) < buffer->length)
 		{
@@ -699,10 +699,125 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 		buffer->data[buffer->length] = '\0';
 		printf("Text has been deleted woth cursor\n");
 		break;
+	case 11:
+		printf("You entered 11 -  Cut text from cursor\n");
+		if (buffer->data == NULL || buffer->length == 0) {
+			printf("Buffer is empty");
+			return;
+		}
+		printf("Choose line and index: ");
+		if (scanf_s("%d", &num_of_symbols) != 1) {
+			printf("Bad format \n");
+			int ch; while ((ch = getchar()) != '\n' && ch != EOF);
+			return;
+		}
+		{
+			int ch; while ((ch = getchar()) != '\n' && ch != EOF);
+		}if (num_of_symbols <= 0) {
+			printf("Nothing to delete\n");
+			return;
+		}
+		pos = FindInserPosition(buffer, cursor_line, cursor_symbol);
+		if (pos == -1)	return;
+		actual_symbols = 0;
+		while (actual_symbols < num_of_symbols && (pos + actual_symbols) < buffer->length)
+		{
+			actual_symbols++;
+		}
+		if (actual_symbols == 0) {
+			printf("No characters ");
+			return;
+		}
+		if (clipboard->c_data != NULL) {
+			free(clipboard->c_data);
+			clipboard->c_data = malloc((size_t)actual_symbols + 1);
+			if (clipboard->c_data == NULL) {
+				printf("Memory allocation error");
+				return;
+			}
+		}
+		memcpy(clipboard->c_data, &buffer->data[pos], (size_t)actual_symbols);
+		clipboard->c_length = actual_symbols;
+		clipboard->c_data[clipboard->c_length] = '\0';
+		Push(history, buffer->data);
+		ClearRedoHistory(redo_history);
+		old_length = buffer->length;
+		bytes_to_move = old_length - (pos + actual_symbols);
+		if (bytes_to_move > 0) {
+			memmove(&buffer->data[pos], &buffer->data[pos + actual_symbols], (size_t)bytes_to_move);
+		}
+		buffer->length = old_length - actual_symbols;;
+		ResizeBuffer(buffer, buffer->length);
+		buffer->data[buffer->length] = '\0';
+		printf("Text has been deleted woth cursor\n");
+		break;
+	case 12:
+		printf("You entered 12 - Past text from cursor\n");
+		if (clipboard->c_data == NULL || clipboard->c_length == 0) {
+			printf("Buffer is empty\n");
+			return;
+		}
+		if (buffer->data > 0) {
+			pos = FindInserPosition(buffer, cursor_line, cursor_symbol);
+			if (pos == -1) return;
+		}
+		Push(history, buffer->data);
+		ClearRedoHistory(redo_history);
+		InserText(buffer, pos, clipboard->c_data);
+		cursor_symbol += (int)clipboard->c_length;
+		break;
+	case 13:
+		printf("You entered 12 - Copy text from cursor\n");
+		if (buffer->data == NULL || buffer->length == 0) {
+			printf("Buffer is empty");
+			return;
+		}
+		printf("Enter num of symbols to copy: ");
+		if (scanf_s("%d", &num_of_symbols) != 1) {
+			printf("Bad format \n");
+			int ch; while ((ch = getchar()) != '\n' && ch != EOF);
+			return;
+		}
+		{
+			int ch; while ((ch = getchar()) != '\n' && ch != EOF);
+		}
+		if (num_of_symbols <= 0) {
+			printf("Nothing to delete\n");
+			return;
+		}
 
+		pos = FindInserPosition(buffer, cursor_line, cursor_symbol);
+		if (pos == -1)	return;
+
+		actual_symbols = 0;
+		while (actual_symbols < num_of_symbols && (pos + actual_symbols) < buffer->length)
+		{
+			actual_symbols++;
+		}
+		if (actual_symbols == 0) {
+			printf("No characters ");
+			return;
+		}
+		if (clipboard->c_data != NULL) {
+			free(clipboard->c_data);
+		}
+		clipboard->c_data = malloc((size_t)actual_symbols + 1);
+
+		if (clipboard->c_data == NULL) {
+			printf("Buffer is empty\n");
+			return;
+		}
+
+		memcpy(clipboard->c_data, &buffer->data[pos], (size_t)actual_symbols);
+		clipboard->c_length = actual_symbols;
+		clipboard->c_data[clipboard->c_length] = '\0';
+
+		printf("Text copied to clipboard%s\n", clipboard->c_data);
+		break;
 	default:
 		printf("You did not enter right number\n");
 		break;
+
 	}
 }
 
@@ -710,10 +825,12 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 int main() {
 	
 	struct History history = { {NULL}, {0}, -1 };
+	//struct History history = { 0 };
+	//struct History redo_history = {0};
 	struct History redo_history = { {NULL}, {0}, -1 };
 	struct DynamicBuffer my_buffer = { NULL, 0 };
-	struct DynamicBuffer clipboard = { NULL, 0 };
-	char command;
+	struct Clipboard clipboard = { NULL, 0 };
+	int command;
 	int a = 1;
 	while (a) {
 		printf("--------MENU--------\n");
@@ -724,7 +841,7 @@ int main() {
 		printf("15.Insert with replacement Command\n16.Implement cursor-based logic\n17.Clearing the console\n18.Exit\n\n");
 		printf("Choose the command: ");
 
-		scanf_s(" %d", &command,1);
+		scanf_s("%d", &command);
 		
 
 		char c;
@@ -793,7 +910,7 @@ int main() {
 			break;
 		case 16:
 			printf("You entered 16 -  Implement cursor-based logic\n");
-			Cursor_Based_Logic(&my_buffer, &history, &clipboard);
+			Cursor_Based_Logic(&my_buffer, &history, &redo_history, &clipboard);
 			break;
 
 
@@ -809,9 +926,17 @@ int main() {
 			printf("You did not enter right number\n");
 		}
 	}
-
+	//for (int i = 0; i <= history.top; i++) free(history.h_addres[i]);
+	//for (int i = 0; i <= redo_history.top; i++) free(redo_history.h_addres[i]);
+	for (int i = 0; i < Max_Undo; i++) {
+		if(history.h_addres[i] != NULL) free(history.h_addres[i]);
+		if(redo_history.h_addres[i] != NULL) free(redo_history.h_addres[i]);
+	}
 	if (my_buffer.data != NULL) {
 		free(my_buffer.data);
+	}
+	if (clipboard.c_data != NULL) {
+		free(clipboard.c_data);
 	}
 	return 0;
 }
