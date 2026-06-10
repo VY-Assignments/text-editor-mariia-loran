@@ -409,7 +409,7 @@ void UndoCommand(struct DynamicBuffer* buffer, struct History* history, struct H
 void RedoCommand(struct DynamicBuffer* buffer, struct History* history, struct History* redo_history)
 {
 	if (redo_history->top == -1) {
-		printf("Nothing to undo\n");
+		printf("Nothing to redo\n");
 		return;
 	}
 	Push(history, buffer->data);
@@ -658,6 +658,7 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 		printf("Cursor successfully moved to %d %d\n", cursor_line, cursor_symbol);
 		break;
 	case 8:
+		printf("You entered 8 - Delete text from cursor\n");
 		if (buffer->data == NULL || buffer->length == 0) {
 			printf("Buffer is empty");
 			return;
@@ -752,12 +753,12 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 		printf("Text has been deleted woth cursor\n");
 		break;
 	case 12:
-		printf("You entered 12 - Past text from cursor\n");
+		printf("You entered 12 - Paste text from cursor\n");
 		if (clipboard->c_data == NULL || clipboard->c_length == 0) {
 			printf("Buffer is empty\n");
 			return;
 		}
-		if (buffer->data > 0) {
+		if (buffer->length > 0) {
 			pos = FindInserPosition(buffer, cursor_line, cursor_symbol);
 			if (pos == -1) return;
 		}
@@ -814,6 +815,35 @@ void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, s
 
 		printf("Text copied to clipboard%s\n", clipboard->c_data);
 		break;
+
+
+	case 14:
+		printf("You entered 14 - Insert with replacement at cursor\n\n");
+		printf("Write Text");
+		if (fgets(text, sizeof(text), stdin) == NULL) return;
+		TrimNewLine(text);
+
+		actual_symbols = (int64_t)strlen(text);
+		if (actual_symbols == 0) {
+			return;
+		}
+		if (buffer->length > 0) {
+			pos = FindInserPosition(buffer, cursor_line, cursor_symbol);
+			if (pos == -1) return;
+		}
+		Push(history, buffer->data);
+		ClearRedoHistory(redo_history);
+
+		required_lenght = pos + actual_symbols;
+		if (required_lenght > buffer->length) {
+			if (!ResizeBuffer(buffer, required_lenght)) return;
+			buffer->length = required_lenght;
+			buffer->data[buffer->length] = '\0';
+		}
+		memcpy(&buffer->data[pos], text, (size_t)actual_symbols);
+		printf("Text replaced successfully\n");
+		break;
+
 	default:
 		printf("You did not enter right number\n");
 		break;
@@ -837,8 +867,8 @@ int main() {
 		printf("1.Append text symbols to the end\n2.Start the new line\n3.Use files to save the information\n4.Use files to load the information\n5.Print the current text to console\n");
 		printf("6.Insert the text by line and symbol index\n7.Search\n");
 
-		printf("8.Delete the Command\n9.Undo Command\n10.Redo Command\n11.Cut Command\n13.Copy Command\n14.Put Command\n");
-		printf("15.Insert with replacement Command\n16.Implement cursor-based logic\n17.Clearing the console\n18.Exit\n\n");
+		printf("8.Delete the Command\n9.Undo Command\n10.Redo Command\n11.Cut Command\n12.Paste Command\n13.Copy Command\n");
+		printf("14.Insert with replacement Command\n15.Implement cursor-based logic\n16.Clearing the console\n17.Exit\n\n");
 		printf("Choose the command: ");
 
 		scanf_s("%d", &command);
@@ -894,31 +924,34 @@ int main() {
 			break;
 		case 11:
 			printf("You entered 11 -  Cut Command\n");
+			ClearRedoHistory(&redo_history);
 			CutCommand(&my_buffer, &history, &clipboard);
+			break;
+		case 12:
+			printf("You entered 12 -  Paste Command\n");
+			ClearRedoHistory(&redo_history);
+			PutCommand(&my_buffer, &history, &clipboard);
 			break;
 		case 13:
 			printf("You entered 13 -  Copy Command\n");
-			CopyCommand(&my_buffer , &history, &clipboard);
+			CopyCommand(&my_buffer, &history, &clipboard);
 			break;
 		case 14:
-			printf("You entered 14 -  Put Command\n");
-			PutCommand(&my_buffer, &history, &clipboard);
-			break;
-		case 15:
-			printf("You entered 15 -  Insert with replacement Command\n");
+			printf("You entered 14 -  Insert with replacement Command\n");
+			ClearRedoHistory(&redo_history);
 			Insert_with_replacement(&my_buffer, &history);
 			break;
-		case 16:
-			printf("You entered 16 -  Implement cursor-based logic\n");
+		case 15:
+			printf("You entered 15 -  Implement cursor-based logic\n");
 			Cursor_Based_Logic(&my_buffer, &history, &redo_history, &clipboard);
 			break;
 
 
-		case 17:
-			printf("You entered 17 -  Clear Console\n");
+		case 16:
+			printf("You entered 16 -  Clear Console\n");
 			ClearConsole();
 			break;
-		case 18:
+		case 17:
 			a = 0;
 			break;
 
@@ -926,12 +959,9 @@ int main() {
 			printf("You did not enter right number\n");
 		}
 	}
-	//for (int i = 0; i <= history.top; i++) free(history.h_addres[i]);
-	//for (int i = 0; i <= redo_history.top; i++) free(redo_history.h_addres[i]);
-	for (int i = 0; i < Max_Undo; i++) {
-		if(history.h_addres[i] != NULL) free(history.h_addres[i]);
-		if(redo_history.h_addres[i] != NULL) free(redo_history.h_addres[i]);
-	}
+	for (int i = 0; i <= history.top; i++) free(history.h_addres[i]);
+	for (int i = 0; i <= redo_history.top; i++) free(redo_history.h_addres[i]);
+	
 	if (my_buffer.data != NULL) {
 		free(my_buffer.data);
 	}
