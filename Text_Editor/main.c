@@ -525,8 +525,7 @@ void PutCommand(struct DynamicBuffer* buffer, struct History* history, struct Cl
 	printf("Choose line and index: ");
 	if (scanf_s("%d %d", &target_line, &target_symbol) != 2) {
 		printf("Bad format \n");
-		int ch;
-		while ((ch = getchar()) != '\n' && ch != EOF);
+		int ch;while ((ch = getchar()) != '\n' && ch != EOF);
 		return;
 	}
 	int ch;while ((ch = getchar()) != '\n' && ch != EOF);
@@ -542,7 +541,6 @@ void PutCommand(struct DynamicBuffer* buffer, struct History* history, struct Cl
 			return;
 		}
 	}
-	
 	Push(history, buffer->data);
 	InserText(buffer, insert_position, clipboard->c_data);
 	printf("Text has been putted\n");
@@ -603,7 +601,111 @@ void Insert_with_replacement(struct DynamicBuffer* buffer, struct History* histo
 	printf("Text has been replaced \n");
 
 }
-void Cursor_Based_Logic(struct DynamicBuffer* buffer) {}
+
+void ClearRedoHistory(struct History* redo_history) {
+	while (redo_history->top>=0) {
+		free(redo_history->h_addres[redo_history->top]);
+		redo_history->top--;
+	}
+}
+
+void Cursor_Based_Logic(struct DynamicBuffer* buffer, struct History* history, struct History* redo_history)
+{
+	static int cursor_line = 0;
+	static int cursor_symbol = 0;
+	printf("--------CURSOR MENU--------\n");
+	printf("1.Move curor\n8.Delete text from cursor\n");
+	printf("11.Cut text from cursor\n12.Past text from cursor\n");
+	printf("13.Copy text from cursor\n14.Insert with replacement at cursor");
+	printf("Choose the command: ");
+
+	char sub_input[10];
+	if (fgets(sub_input, sizeof(sub_input), stdin) == NULL) return;
+	TrimNewLine(sub_input);
+	int command;
+	if (sscanf_s(sub_input,"%d", &command) != 1) {
+		printf("Invalid input");
+		command = -1;
+	}
+
+	int  t_line = 0, t_sym = 0;
+	int num_of_symbols = 0;
+	char text[120];
+	int64_t pos = 0;
+	int64_t old_length = 0;
+	int64_t bytes_to_move = 0;
+	int64_t actual_symbols = 0;
+	int64_t required_lenght = 0;
+	switch (command) {
+	case 1:
+		printf("Enter new cursor position(line and symbols): \n");
+		if (scanf_s("%d %d", &t_line, &t_sym) != 2) {
+			int ch;while ((ch = getchar()) != '\n' && ch != EOF);
+			return;
+		}
+		{
+			int ch;while ((ch = getchar()) != '\n' && ch != EOF);
+		}
+		if (buffer->length > 0) {
+			if (FindInserPosition(buffer, t_line, t_sym) == -1) return;
+		}
+		else if (t_line != 0 || t_sym != 0) {
+			printf("Buffer is empty. Cursor 0 0\n");
+			return;
+		}
+		cursor_line = t_line;
+		cursor_symbol = t_sym;
+		printf("Cursor successfully moved to %d %d\n", cursor_line,cursor_symbol);
+		break;
+	case 8:
+		if (buffer->data == NULL || buffer->length == 0) {
+			printf("Buffer is empty");
+			return;
+		}
+		printf("Choose line and index: ");
+		if (scanf_s("%d",&num_of_symbols) != 1) {
+			printf("Bad format \n");
+			int ch; while ((ch = getchar()) != '\n' && ch != EOF);
+			return;
+		}
+		{
+			int ch; while ((ch = getchar()) != '\n' && ch != EOF);
+		}if (num_of_symbols <= 0) {
+			printf("Nothing to delete\n");
+			return;
+		}
+
+		pos = FindInserPosition(buffer, cursor_line, cursor_symbol);
+		if (pos == -1)	return;
+		
+		actual_symbols = 0;
+		while (actual_symbols < num_of_symbols && (pos + actual_symbols) < buffer->length)
+		{
+			actual_symbols++;
+		}
+		if (actual_symbols == 0) {
+			printf("No characters ");
+			return;
+		}
+		Push(history, buffer->data);
+		ClearRedoHistory(redo_history);
+		old_length = buffer->length;
+		bytes_to_move = old_length - (pos + actual_symbols);
+		if (bytes_to_move > 0) {
+			memmove(&buffer->data[pos], &buffer->data[pos + actual_symbols], (size_t)bytes_to_move);
+		}
+		buffer->length = old_length - actual_symbols;;
+		ResizeBuffer(buffer, buffer->length);
+		buffer->data[buffer->length] = '\0';
+		printf("Text has been deleted woth cursor\n");
+		break;
+
+	default:
+		printf("You did not enter right number\n");
+		break;
+	}
+}
+
 
 int main() {
 	
@@ -691,7 +793,7 @@ int main() {
 			break;
 		case 16:
 			printf("You entered 16 -  Implement cursor-based logic\n");
-			Cursor_Based_Logic(&my_buffer);
+			Cursor_Based_Logic(&my_buffer, &history, &clipboard);
 			break;
 
 
